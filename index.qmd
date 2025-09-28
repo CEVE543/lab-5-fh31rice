@@ -41,14 +41,6 @@ code-line-numbers: false
 code-block-font-size: "0.85em"
 ---
 
-## Do Before Lab {.unnumbered}
-
-1. **Accept the assignment.** Use the GitHub Classroom link posted on Canvas to "accept" the assignment, which will give you your own GitHub repository.
-2. **Clone your repository** to your computer using GitHub Desktop or the command line.
-3. **Open the repository in VS Code** directly from VS Code, GitHub Desktop, or your command line.
-4. **Activate the Julia environment.** In VS Code, open the command palette (View → Command Palette) and type "Julia: Start REPL". Alternatively, run `julia --project=.` in the terminal, then run `using Pkg; Pkg.instantiate()` to install required packages. The easiest method is to type `]` in the REPL to enter package mode, then type `instantiate`.
-5. **Review previous concepts** including Bayesian GEV inference, return level calculations, and multi-station comparisons.
-6. **Verify rendering works.** Run `quarto render index.qmd` in your terminal - it should create both PDF and HTML documents.
 
 ## Do During Lab {.unnumbered}
 
@@ -65,26 +57,50 @@ To submit your work, push your changes to GitHub, render to PDF, and upload the 
 
 ## Your Analysis {.unnumbered}
 
-::: {.callout-important}
-## Instructions
-Delete this entire section (including the "Do Before Lab" and "Do During Lab" sections above) and replace it with your analysis responses. Use the numbered format below for your final submission.
-:::
 
 **Response 1: Spatial Trend Inconsistencies**
 *What patterns do you observe in the Mann-Kendall results across nearby stations? Are these results climatologically plausible? What does this suggest about single-station trend analysis?*
 
+Ans: Man kendall test is performed to understand if there is any trend or not in our observed rainfall data.
+Null hypothesis (H0): there is no trend in our data
+Alternative hypothesis (H1): there is trend (up or downward) in our data
+Mk_s positive value means the rainfall extremes are increasing, the S value represents that the later values are higher than earlier value (say, later year rainfall data are high than the previous years rainfall value). MS_s negative means rainfall extremes are decreasing (later year rainfall values are lower then the earlier years value).
+p>=0.05 means, we fail to reject the null hypothesis, that basically means there is not enough evidence to say there is a trend in our data (simply it says, there is no trend in our data).
+So the Mann kendall test for different stations shows one thing, in a certain region some stations may have positive trend, some may have negative trend. This can happen because different station has different years of data record( say WB city has 125 years of record, Hosuton heights have only 57 years of record), so the Mann Kendal test that we are doing here station by station, shows contradictory result (Say like Houston WB station is saying, the p value is greater than 0.05 and we fail to reject null hypothesis and there is no significant trend in data, but a station just 7 km away(Houston heights) is saying the p is less than 0.05,and we reject null hypothesis and there is a trend (positive trend here as S is positive), and  which is contradictory, because in a certain region within a 7km range, seeing different rainfall pattern is not common). In a broader sense, it is suggesting that the climate is behaving differently within 7 km, which is a very unusual conclusion. So, there is spatial inconsistency we will find by doing station by station Mann kendall test.
+
 **Response 2: Nonstationary Model Uncertainty**
 *How does posterior uncertainty in return levels compare across the two nonstationary GEV models? Which model structure provides the most reliable estimates and why?*
+Ans: I implement two models that allow different GEV parameters to vary with CO₂:
+1.	Location-varying model: Only the location parameter changes with CO₂.
+μ(x) = α_μ + β_μ*x where x = log(CO2)
+α_μ= baseline location parameter
+β_μ = location trend parameter
+We can explain the equation like, say we have a baseline location parameter (α_μ), but with increase in time the μ(x)  will vary with the rate of CO2. The variation is controlled by β_μ(slope of that equation)
+2.	Location and scale varying model: Both location and scale parameters change with CO₂
+μ(x) = α_μ + β_μ*x, σ(x) = α_σ + β_σ*x
+We can explain the equation like, say we have a baseline location parameter, but with increase in time it will vary with the rate of CO2. The variation is controlled by β_μ(slope of that equation).
+Similarly, say we have a baseline scale parameter, but with increase in time it will vary with the rate of CO2. The variation is controlled by β_σ (slope of that equation).
+
+For my selected station of Houston WB(stnid 780), the figures show that, the return level curve for 1950 and 2025 are different. That’s the key point of non stationarity, if we were considering location and scale not to vary with C02 and with time, then the curve for 1950 and 2025 will always be same.
+Regarding the two graphs, in the right graph of location + scale, we can see that the uncertainty bound is large rather than only location trend parameter. That means, considering more trend parameters, can include more uncertainty in a model.
+
+But I noticed one thing that, in my convergence graph for location+scale trends, one of the chains didn't converge well with the other chains, also the R(hat) comes around 1.50.
 
 **Response 3: Regional vs Single-Station Trade-offs**
 *Compare the bias-variance trade-offs between single-station and regional parameter estimation approaches. Under what conditions would you choose each strategy?*
+Ans: A single station has low bias but high variance because it may not have sufficient data length to capture the value of trend and shape parameter. A single station analysis only depends on this site specific data.
 
+On the other hand, regional analysis can share the trend and shape parameters across stations and ultimately can help reuce the uncertainty in return level estimates. So, for short records of data at a particular station can get benefited from data sharing.
+
+If I have a longer record of data for a particular station, I will choose single station, but if I am more interested in region analysis or say designing a building or bridge in an area I will prefere regional analysis.
 **Response 4: Parameter Sharing Effects**
 *How does regional parameter sharing affect trend estimates and uncertainty? What are the practical implications for stations with limited data?*
-
+Ans: If a station has limited data, fitting GEV station may not help much as the higher return period will give higher return level with a large range of uncertainty. In this kind of scenario, data sharing from regional approach can pool more robust assumption of an area across stations and ultimately can reduce the uncertainty bands.
 **Response 5: Regional Analysis for PS1**
 *How will these regional analysis techniques enhance your PS1 approach? What challenges do you anticipate in implementing regional models for your selected stations?*
+Ans: For regional analysis, the challenge is that, it assumes that stations in a certain region share the same climate driven trend(say CO2 in marshland and inland is same). This sometimes can tricky based on study area, if the geography varies a lot within area boundary, then regional approach can face challenge.
 
+Also, when we share data among stations, if different stations have different data lengths, say like 7 stations have 160 years of record but one station has only 25 years of record, that can be problemetic.
 ## Data Setup and Package Loading
 
 ### Loading Required Packages
@@ -94,9 +110,9 @@ We'll load packages for data analysis, Bayesian modeling, and visualization.
 ```{julia}
 #| output: false
 using Pkg
-lab_dir = dirname(@__FILE__)
+lab_dir = dirname("D:\\FALL 2025\\CEVE 543\\labs\\lab-5-fh31rice\\")
 Pkg.activate(lab_dir)
-# Pkg.instantiate() # uncomment this the first time you run the lab to install packages, then comment it back
+Pkg.instantiate() # uncomment this the first time you run the lab to install packages, then comment it back
 ```
 
 Load the core packages:
@@ -167,7 +183,7 @@ end
 Select your primary station that has substantial data and potential trend signal:
 
 ```{julia}
-my_stnid = 31  # Station 41-4309 (Houston Addicks), selected for potential trend signal
+my_stnid = 780  # Station 41-4309 (Houston Addicks), selected for potential trend signal
 my_station = @chain stations begin
 	@filter(stnid == !!my_stnid)
 	first
@@ -762,7 +778,7 @@ Let's compare how the regional model performs versus the single-station nonstati
 regional_fname = joinpath(lab_dir, "regional_nonstat.nc")
 regional_idata = ArviZ.from_netcdf(regional_fname)
 
-my_stnid = 31
+my_stnid = 780
 analysis_stnids = analysis_stations.stnid
 
 my_station_idx = findfirst(x -> x == my_stnid, analysis_stnids)
